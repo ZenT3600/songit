@@ -1,6 +1,6 @@
 # songit
-> backup utility designed with music libraries in mind
-> https://img.shields.io/badge/GNU%20Bash-4EAA25?style=for-the-badge&logo=GNU%20Bash&logoColor=white
+> a backup utility designed with music libraries in mind
+> ![](https://img.shields.io/badge/GNU%20Bash-4EAA25?style=for-the-badge&logo=GNU%20Bash&logoColor=white)
 
 ---
 
