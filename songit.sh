@@ -9,15 +9,16 @@ NC='\033[0m'
 
 function generate-metadata() {
 	echo -e "${LGRAY}> Removing outdated metadata...${NC}"
-	test ! -d "$REPO_PATH" && mkdir "$REPO_PATH"
-	find "$REPO_PATH" -type f -not -path "*/.git/*" -exec echo -e {} \; | sed 's/\.txt//g' | sed "s@$REPO_PATH@@" | xargs -I{} bash -c "echo -e \"${DGRAY}> > Looking at Directory ${GREEN}\$(dirname \"{}\")${DGRAY}...${NC}\" && if [ ! -f \"$(realpath "$SOURCE"){}\" ]; then echo > \"$(realpath "$REPO_PATH"){}.txt\"; else (( \$(date -r \"$(realpath "$SOURCE"){}\" +%s) >= \$(date -r \"$(realpath "$REPO_PATH"){}.txt\" +%s) )) && echo > \"$(realpath $SOURCE){}.txt\"; fi" | uniq
+	mkdir "$REPO_PATH" 2> /dev/null
+	find "$REPO_PATH" -type f -not -path "*/.git/*" -exec echo -e {} \; | sed 's/\.txt//g' | sed "s@$REPO_PATH@@" | xargs -I{} bash -c "echo -e \"${DGRAY}> > Looking at Directory ${GREEN}\$(dirname \"{}\")${DGRAY}...${NC}\" && if [ ! -f \"$(realpath "$SOURCE"){}\" ]; then echo > \"$(realpath "$REPO_PATH")/{}.txt\"; else (( \$(date -r \"$(realpath "$SOURCE")/{}\" +%s) >= \$(date -r \"$(realpath "$REPO_PATH")/{}.txt\" +%s) )) && echo > \"$(realpath $SOURCE)/{}.txt\"; fi" | uniq
 	find "$REPO_PATH" -type d -empty -delete
+	mkdir "$REPO_PATH" 2> /dev/null
 	echo -e "${WHITE}Generating metadata...${NC}"
 	echo -e "${LGRAY}> Recreating directory tree...${NC}"
 	find "$SOURCE" -type d -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} mkdir "$REPO_PATH/{}" 2> /dev/null
 	echo -e "${LGRAY}> Extracting metadata... (this may take a while)${NC}"
 	find "$SOURCE" -maxdepth 1 -not -path "*/$REPO_DIR/*" -not -wholename "$SOURCE" -not -name "$REPO_DIR" -exec echo -e {} \; | while read -r d; do
-	find "$d" -type f -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} bash -c "if [ ! -s \"$(realpath $REPO_PATH){}.txt\" ]; then echo -e \"${DGRAY}> > Regenerating ${GREEN}\$(basename \"{}\")${DGRAY}...${NC}\"; exiftool \"$(realpath "$SOURCE"){}\" > \"$(realpath "$REPO_PATH"){}.txt\"; fi"
+	find "$d" -type f -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} bash -c "if [ ! -s \"$(realpath $REPO_PATH)/{}.txt\" ]; then echo -e \"${DGRAY}> > Regenerating ${GREEN}\$(basename \"{}\")${DGRAY}...${NC}\"; exiftool \"$(realpath "$SOURCE")/{}\" > \"$(realpath "$REPO_PATH")/{}.txt\"; fi"
 		echo -e "${DGRAY}> > Added ${GREEN}$(basename "$d") to working queue${NC}"
 	done
 }
