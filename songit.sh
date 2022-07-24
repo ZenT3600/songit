@@ -1,23 +1,30 @@
 #!/usr/bin/bash
 
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+WHITE='\033[1;37m'
+LGRAY='\033[0;37m'
+DGRAY='\033[1;30m'
+NC='\033[0m'
+
 function generate-metadata() {
-	echo "> Removing outdated metadata..."
+	echo -e "${LGRAY}> Removing outdated metadata...${NC}"
 	test ! -d "$REPO_PATH" && mkdir "$REPO_PATH"
-	find "$REPO_PATH" -type f -not -path "*/.git/*" -exec echo -e {} \; | sed 's/\.txt//g' | sed "s@$REPO_PATH@@" | xargs -I{} bash -c "echo \"> > Looking at Directory \$(dirname \"{}\")...\" && if [ ! -f \"$(realpath "$SOURCE"){}\" ]; then echo > \"$(realpath "$REPO_PATH"){}.txt\"; else (( \$(date -r \"$(realpath "$SOURCE"){}\" +%s) >= \$(date -r \"$(realpath "$REPO_PATH"){}.txt\" +%s) )) && echo > \"$(realpath $SOURCE){}.txt\"; fi" | uniq
+	find "$REPO_PATH" -type f -not -path "*/.git/*" -exec echo -e {} \; | sed 's/\.txt//g' | sed "s@$REPO_PATH@@" | xargs -I{} bash -c "echo -e \"${DGRAY}> > Looking at Directory ${GREEN}\$(dirname \"{}\")${DGRAY}...${NC}\" && if [ ! -f \"$(realpath "$SOURCE"){}\" ]; then echo > \"$(realpath "$REPO_PATH"){}.txt\"; else (( \$(date -r \"$(realpath "$SOURCE"){}\" +%s) >= \$(date -r \"$(realpath "$REPO_PATH"){}.txt\" +%s) )) && echo > \"$(realpath $SOURCE){}.txt\"; fi" | uniq
 	find "$REPO_PATH" -type d -empty -delete
-	echo "Generating metadata..."
-	echo "> Recreating directory tree..."
+	echo -e "${WHITE}Generating metadata...${NC}"
+	echo -e "${LGRAY}> Recreating directory tree...${NC}"
 	find "$SOURCE" -type d -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} mkdir "$REPO_PATH/{}" 2> /dev/null
-	echo "> Extracting metadata... (this may take a while)"
+	echo -e "${LGRAY}> Extracting metadata... (this may take a while)${NC}"
 	find "$SOURCE" -maxdepth 1 -not -path "*/$REPO_DIR/*" -not -wholename "$SOURCE" -not -name "$REPO_DIR" -exec echo -e {} \; | while read -r d; do
-	find "$d" -type f -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} bash -c "if [ ! -s \"$(realpath $REPO_PATH){}.txt\" ]; then echo \"> > Regenerating \$(basename \"{}\")\"; exiftool \"$(realpath "$SOURCE"){}\" > \"$(realpath "$REPO_PATH"){}.txt\"; fi"
-		echo "> > Added $(basename "$d") to working queue"
+	find "$d" -type f -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} bash -c "if [ ! -s \"$(realpath $REPO_PATH){}.txt\" ]; then echo -e \"${DGRAY}> > Regenerating ${GREEN}\$(basename \"{}\")${DGRAY}...${NC}\"; exiftool \"$(realpath "$SOURCE"){}\" > \"$(realpath "$REPO_PATH"){}.txt\"; fi"
+		echo -e "${DGRAY}> > Added ${GREEN}$(basename "$d") to working queue${NC}"
 	done
 }
 
 function update-repo() {
 	test ! -d "$REPO_PATH/.git" && git -C "$REPO_PATH" init && git config --global --add safe.directory "$REPO_PATH" && git config --global --add safe.directory "$REPO_TARGET_PATH"
-	echo "Updating internal repo..."
+	echo -e "${WHITE}Updating internal repo...${NC}"
 	date > "$REPO_PATH/lastupdate"
 	cp "$REPO_PATH/lastupdate" "$SOURCE/"
 	git -C "$REPO_PATH" add . -v
@@ -26,17 +33,17 @@ function update-repo() {
 
 function copy-over() {
 	export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
-	echo "Copying over data..."
-	echo "> Recreating directory tree..."
+	echo -e "${WHITE}Copying over data...${NC}"
+	echo -e "${LGRAY}> Recreating directory tree...${NC}"
 	find "$SOURCE" -type d -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} mkdir "$(realpath "$TARGET")/{}" 2> /dev/null
 	test ! -d "$REPO_TARGET_PATH" && mkdir "$REPO_TARGET_PATH"
 	test ! -d "$REPO_TARGET_PATH/.git" && git -C "$REPO_TARGET_PATH" init && git config --global --add safe.directory "$REPO_TARGET_PATH" && git -C "$REPO_TARGET_PATH" config --local receive.denyCurrentBranch ignore && git -C "$REPO_TARGET_PATH" config pull.rebase false
-	echo "> Pushing internal repo changes"
+	echo -e "${LGRAY}> Pushing internal repo changes${NC}"
 	git -C "$REPO_TARGET_PATH" remote add sourcerepo "$REPO_PATH"
 	git -C "$REPO_TARGET_PATH" remote update
 	git -C "$REPO_TARGET_PATH" fetch sourcerepo
 	git -C "$REPO_TARGET_PATH" pull --no-rebase sourcerepo master
-	echo "> Copying changes from source"
+	echo -e "${LGRAY}> Copying changes from source${NC}"
 	set -e
 	git -C "$REPO_TARGET_PATH" log -n 1 --name-status --pretty="" | xargs -I{} echo -e "{}\n" | grep -i "^D" | awk '{$1 = ""; print $0}' | sed 's/\.txt//g' | sed 's/"//g' | xargs -I{} rm -rfv "$(realpath "$TARGET")/{}"
 	git -C "$REPO_TARGET_PATH" log -n 1 --name-status --pretty="" | xargs -I{} echo -e "{}\n" | grep -i "^A" | awk '{$1 = ""; print $0}' | sed 's/\.txt//g' | sed 's/"//g' | xargs -I{} bash -c "cp -v \"$(realpath "$SOURCE")/{}\" \"$(realpath "$TARGET")/{}\""
