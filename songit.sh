@@ -6,38 +6,16 @@ function generate-metadata() {
 	test ! -d "$REPO_PATH" && mkdir "$REPO_PATH"
 	echo "Generating metadata..."
 	echo "> Recreating directory tree..."
-	find "$SOURCE" -type d -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} mkdir "$REPO_PATH{}" 2> /dev/null
+	find "$SOURCE" -type d -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} mkdir "$REPO_PATH/{}" 2> /dev/null
 	echo "> Extracting metadata... (this may take a while)"
-	readarray -d "" FL < <(find "$SOURCE" -maxdepth 1 -not -name "$REPO_DIR" -not -wholename "$SOURCE" -print0)
-	CS=4
-	for((i=0; i < ${#FL[@]}; i+=CS))
-	do
-		CHUNK=("${FL[@]:i:CS}")
-		L=${#CHUNK[@]}
-		ML=$(( L - 1 ))
-		for((j=0; j < $ML; j++))
-		do
-			find "${CHUNK[$j]}" -type f -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} bash -c "exiftool \"$(realpath $SOURCE)/{}\" > \"$REPO_PATH/{}.txt\"" &
-			echo "> > Added ${CHUNK[$j]} to working queue"
-		done
-		find "${CHUNK[$ML]}" -type f -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} bash -c "exiftool \"$(realpath $SOURCE)/{}\" > \"$REPO_PATH/{}.txt\""
-		echo "> > Added ${CHUNK[$ML]} to working queue"
-	done
-	echo "> > Working..."
-	while true
-	do
-		SFC=$(find "$SOURCE" -type f -not -path "$REPO_PATH/*" -not -wholename "$REPO_PATH" -printf "%f\n")
-		RFC=$(find "$REPO_PATH" -type f -not -path "$REPO_PATH/.git/*" -not -wholename ".git" -printf "%f\n" | sed 's/\.txt//g')
-
-		if [[ "$(echo $RFC | wc -l)" -eq "$(echo $SFC | wc -l)" ]]
-		then
-			break
-		fi
+	find "$SOURCE" -maxdepth 1 -not -path "*/$REPO_DIR/*" -not -wholename "$SOURCE" -not -name "$REPO_DIR" -exec echo -e {} \; | while read f; do
+		find "$f" -type f -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | sed "s@$SOURCE@@" | xargs -I{} bash -c "exiftool \"$(realpath $SOURCE)/{}\" > \"$(realpath $REPO_PATH)/{}.txt\""
+		echo "> > Added $(basename "$f") to working queue"
 	done
 }
 
 function update-repo() {
-	test ! -d "$REPO_PATH/.git" && git -C "$REPO_PATH" init && git config --global --add safe.directory "$REPO_PATH"
+	test ! -d "$REPO_PATH/.git" && git -C "$REPO_PATH" init && git config --global --add safe.directory "$REPO_PATH" && git config --global --add safe.directory "$REPO_TARGET_PATH"
 	echo "Updating internal repo..."
 	date > "$REPO_PATH/lastupdate"
 	cp "$REPO_PATH/lastupdate" "$SOURCE/"
