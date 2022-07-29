@@ -26,9 +26,15 @@ function generate-metadata() {
 function update-repo() {
 	test ! -d "$REPO_PATH/.git" && git -C "$REPO_PATH" init && git config --global --add safe.directory "$REPO_PATH" && git config --global --add safe.directory "$REPO_TARGET_PATH"
 	echo -e "${WHITE}Updating internal repo...${NC}"
-	date > "$REPO_PATH/lastupdate"
-	cp "$REPO_PATH/lastupdate" "$SOURCE/"
-	git -C "$REPO_PATH" add . -v
+  echo "# \'$(basename $TARGET)\' Music Folder" \
+       "> n.$(date +%s) update" \
+       "" \
+       "---" \
+       "" \
+       "$(find '$SOURCE' -type d -not -name '$REPO_DIR' -not -wholename '$REPO_PATH/*' -exec echo -e {} \; | wc -l) Folders" \
+       "$(find '$SOURCE' -type f -not -name '$REPO_DIR' -not -wholename '$REPO_PATH/*' -exec echo -e {} \; | wc -l) Files" > "$(realpath $SOURCE)/README.md"
+  exiftool "$(realpath '$SOURCE')/README.md" > "$(realpath '$REPO_PATH')/README.md.txt"
+  git -C "$REPO_PATH" add . -v
 	git -C "$REPO_PATH" commit -m "$(date)" -v
 }
 
@@ -43,8 +49,8 @@ function copy-over() {
 	git -C "$REPO_TARGET_PATH" remote add sourcerepo "$REPO_PATH"
 	git -C "$REPO_TARGET_PATH" remote update
 	git -C "$REPO_TARGET_PATH" fetch sourcerepo
-	git -C "$REPO_TARGET_PATH" pull --no-rebase sourcerepo master
-	echo -e "${LGRAY}> Copying changes from source${NC}"
+  git -C "$REPO_TARGET_PATH" pull --no-rebase sourcerepo master
+  echo -e "${LGRAY}> Copying changes from source${NC}"
 	set -e
 	git -C "$REPO_TARGET_PATH" log -n 1 --name-status --pretty="" | xargs -I{} echo -e "{}\n" | grep -i "^D" | awk '{$1 = ""; print $0}' | sed 's/\.txt//g' | sed 's/"//g' | xargs -I{} rm -rfv "$(realpath "$TARGET")/{}"
 	git -C "$REPO_TARGET_PATH" log -n 1 --name-status --pretty="" | xargs -I{} echo -e "{}\n" | grep -i "^A" | awk '{$1 = ""; print $0}' | sed 's/\.txt//g' | sed 's/"//g' | xargs -I{} bash -c "cp -v \"$(realpath "$SOURCE")/{}\" \"$(realpath "$TARGET")/{}\""
