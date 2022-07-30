@@ -26,13 +26,16 @@ function generate-metadata() {
 function update-repo() {
 	test ! -d "$REPO_PATH/.git" && git -C "$REPO_PATH" init && git config --global --add safe.directory "$REPO_PATH" && git config --global --add safe.directory "$REPO_TARGET_PATH"
 	echo -e "${WHITE}Updating internal repo...${NC}"
-  echo "# \'$(basename $TARGET)\' Music Folder" \
-       "> n.$(date +%s) update" \
-       "" \
-       "---" \
-       "" \
-       "$(find '$SOURCE' -type d -not -name '$REPO_DIR' -not -wholename '$REPO_PATH/*' -exec echo -e {} \; | wc -l) Folders" \
-       "$(find '$SOURCE' -type f -not -name '$REPO_DIR' -not -wholename '$REPO_PATH/*' -exec echo -e {} \; | wc -l) Files" > "$(realpath $SOURCE)/README.md"
+  echo "# \'$(basename $TARGET)\' Music Folder
+> n.$(date +%s) update
+
+---
+
+$(find "$SOURCE" -type d -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | wc -l) Folders
+
+$(find "$SOURCE" -type f -not -name "$REPO_DIR" -not -wholename "$REPO_PATH/*" -exec echo -e {} \; | wc -l) Files
+
+SHA1($(find "$SOURCE" -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum | awk '{print $1}'))" > "$(realpath $SOURCE)/README.md"
   exiftool "$(realpath '$SOURCE')/README.md" > "$(realpath '$REPO_PATH')/README.md.txt"
   git -C "$REPO_PATH" add . -v
 	git -C "$REPO_PATH" commit -m "$(date)" -v
