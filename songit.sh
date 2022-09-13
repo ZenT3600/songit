@@ -9,7 +9,7 @@ NC='\033[0m'
 
 function generate-metadata() {
 	echo -e "${LGRAY}> Removing outdated metadata...${NC}"
-	mkdir "$REPO_PATH" 2> /dev/null
+	mkdir -p "$REPO_PATH" 2> /dev/null
 	find "$REPO_PATH" -type f -not -path "*/.git/*" -exec echo -e {} \; | sed 's/\.txt//g' | sed "s@$REPO_PATH@@" | xargs -I{} bash -c "echo -e \"${DGRAY}> > Looking at Directory ${GREEN}\$(dirname \"{}\")${DGRAY}...${NC}\" && if [ ! -f \"$(realpath "$SOURCE"){}\" ]; then echo > \"$(realpath "$REPO_PATH")/{}.txt\"; else (( \$(date -r \"$(realpath "$SOURCE")/{}\" +%s) >= \$(date -r \"$(realpath "$REPO_PATH")/{}.txt\" +%s) )) && echo > \"$(realpath $SOURCE)/{}.txt\"; fi" | uniq
 	find "$REPO_PATH" -type d -empty -delete
 	mkdir "$REPO_PATH" 2> /dev/null
@@ -24,7 +24,9 @@ function generate-metadata() {
 }
 
 function update-repo() {
-	test ! -d "$REPO_PATH/.git" && git -C "$REPO_PATH" init && git config --global --add safe.directory "$REPO_PATH" && git config --global --add safe.directory "$REPO_TARGET_PATH"
+	export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
+	mkdir -p "$REPO_PATH"
+	test ! -d "$REPO_PATH/.git" && GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git -C "$REPO_PATH" init && GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git config --global --add safe.directory "$REPO_PATH" && GIT_DISCOVERY_ACROSS_FILESYSTEM=1 git config --global --add safe.directory "$REPO_TARGET_PATH"
 	echo -e "${WHITE}Updating internal repo...${NC}"
   git -C "$REPO_PATH" add . -v
 	git -C "$REPO_PATH" commit -m "$(date)" -v
@@ -53,6 +55,16 @@ function copy-over() {
 	#git -C "$REPO_TARGET_PATH" commit -m "$(date)" -v
 }
 
+function generate-stats() {
+	echo "" > "$STATS_FILE"
+	echo "$(echo "# Stats for $(basename "$SOURCE") Folder" && \
+		echo && echo "## Folder Sizes" && \
+		echo && echo \`\`\` && du -sh "$SOURCE"/* && echo \`\`\` && \
+		echo && echo "## File Types" && \
+		echo && echo \`\`\` && find "$SOURCE" -type f -not -path '*/.*' | sed 's/.*\.//' | sort | uniq -c && echo \`\`\` && \
+		echo && date)" | tee "$STATS_FILE"
+}
+
 SOURCE=$1
 test -z "$SOURCE" && exit
 
@@ -67,7 +79,9 @@ fi
 
 REPO_PATH=$(realpath "$SOURCE")/$REPO_DIR
 REPO_TARGET_PATH=$(realpath "$TARGET")/$REPO_DIR
+STATS_FILE=$(realpath "$TARGET")/STATS.md
 
-generate-metadata
-update-repo
-copy-over
+#generate-metadata
+#update-repo
+#copy-over
+generate-stats
