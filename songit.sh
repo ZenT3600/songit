@@ -81,7 +81,7 @@ REPO_PATH=$(realpath "$SOURCE")/$REPO_DIR
 REPO_TARGET_PATH=$(realpath "$TARGET")/$REPO_DIR
 STATS_FILE=$(realpath "$TARGET")/STATS.md
 
-#generate-metadata
-#update-repo
-#copy-over
+generate-metadata
+update-repo
+copy-over
 generate-stats
